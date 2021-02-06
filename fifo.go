@@ -6,68 +6,107 @@ import (
 	"sync"
 )
 
-type fifoItem struct {
-	Key   interface{}
-	Value interface{}
-}
-
+// FIFOCache
 type FIFOCache struct {
-	amu      sync.Mutex
-	rmu      sync.Mutex
-	list     *list.List
-	table    map[interface{}]*list.Element
-	capacity int
+	cache Cache
+
+	list *list.List
+
+	// size is the number of items in this cache
+	size int
+
+	// maxCapacity is the max capacity of cache
+	maxCapacity int
+
+	// Read/Write mutex to protect members above
+	lock sync.RWMutex
 }
 
-func NewFIFOCache(cap int) *FIFOCache {
+// NewFIFOCache
+func NewFIFOCache() *FIFOCache {
 	return &FIFOCache{
-		capacity: cap,
-		list:     list.New(),
-		table:    make(map[interface{}]*list.Element),
+		cache:       NewMemoryCache(),
+		list:        list.New(),
+		maxCapacity: defaultCacheCapacity,
+		lock:        sync.RWMutex{},
 	}
 }
 
-func (f *FIFOCache) Count() int {
-	return f.list.Len()
+// SetMaxCapacity
+func (fifo *FIFOCache) SetMaxCapacity(capacity int) {
+	fifo.lock.Lock()
+	defer fifo.lock.Unlock()
+	fifo.maxCapacity = capacity
 }
 
-func (f *FIFOCache) Contains(key interface{}) bool {
-	_, ok := f.table[key]
-	return ok
+// MaxCapacity
+func (fifo *FIFOCache) MaxCapacity() int {
+	fifo.lock.RLock()
+	capacity := fifo.maxCapacity
+	fifo.lock.RUnlock()
+	return capacity
 }
 
-func (f *FIFOCache) Get(key interface{}) interface{} {
-	if element, ok := f.table[key]; ok {
-		return element.Value.(*fifoItem).Value
+func (fifo *FIFOCache) Size() int {
+	fifo.lock.RLock()
+	size := fifo.size
+	fifo.lock.RUnlock()
+	return size
+}
+
+func (fifo *FIFOCache) Has(key string) bool {
+	return fifo.cache.Has(key)
+}
+
+func (fifo *FIFOCache) Get(key string) interface{} {
+	val, _ := fifo.cache.Get(key)
+	return val
+}
+
+func (fifo *FIFOCache) Set(key string, val interface{}) {
+	item := &lruItem{
+		key:              key,
+		val:              val,
+		expiredTimestamp: magicNumber,
 	}
-	return nil
-}
 
-func (f *FIFOCache) Set(key, value interface{}) {
-	f.amu.Lock()
-	defer f.amu.Unlock()
-	if f.capacity > 0 && f.Count() == f.capacity && !f.Contains(key) {
-		f.Remove(f.list.Front().Value.(*fifoItem).Key)
-	}
-	if element, ok := f.table[key]; ok {
-		element.Value.(*fifoItem).Value = value
+	fifo.lock.Lock()
+	if fifo.cache.Has(key) {
+		val, err := fifo.cache.Get(key)
+		if err != nil {
+			return
+		}
+
+		oldElement, _ := val.(*list.Element)
+		fifo.list.Remove(oldElement)
+
+		element := fifo.list.PushBack(item)
+		fifo.cache.Set(key, element)
 	} else {
-		element := f.list.PushBack(&fifoItem{Key: key, Value: value})
-		f.table[key] = element
+		if fifo.size < fifo.maxCapacity {
+			element := fifo.list.PushBack(item)
+			fifo.cache.Set(key, element)
+		} else {
+			element := fifo.list.PushBack(item)
+			fifo.cache.Set(key, element)
+			fifo.Remove(fifo.list.Front().Value.(*fifoItem).key)
+		}
+	}
+
+	fifo.lock.Unlock()
+
+}
+
+func (fifo *FIFOCache) Remove(key string) {
+	if val, err := fifo.cache.Get(key); err == nil {
+		oldElement, _ := val.(*list.Element)
+		fifo.list.Remove(oldElement)
+		fifo.cache.Delete(key)
 	}
 }
 
-func (f *FIFOCache) Remove(key interface{}) {
-	f.rmu.Lock()
-	defer f.rmu.Unlock()
-	if element, ok := f.table[key]; ok {
-		f.list.Remove(element)
-		delete(f.table, key)
-	}
-}
-
-func (f *FIFOCache) Traverse() {
-	data := f.list.Front()
+func (fifo *FIFOCache) Traverse() {
+	data := fifo.list.Front()
 	for {
 		fmt.Println(data.Value.(*fifoItem))
 		if data.Next() != nil {
