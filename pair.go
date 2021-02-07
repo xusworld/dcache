@@ -28,3 +28,16 @@ type lfuItem struct {
 	// expired timestamp
 	expiredTimestamp time.Duration
 }
+
+
+// fifoItem
+type fifoItem struct {
+	// string key
+	key string
+
+	// interface value
+	val interface{}
+
+	// expired timestamp
+	expiredTimestamp time.Duration
+}
