@@ -1,37 +1,43 @@
 package dcache
 
-import "errors"
+import (
+	"errors"
+
+	cmap "github.com/orcaman/concurrent-map"
+)
 
 // memoryCache
 type memoryCache struct {
-	items map[string]interface{}
+	dataMap cmap.ConcurrentMap
 }
 
 // NewMemoryCache
 func NewMemoryCache() *memoryCache {
 	return &memoryCache{
-		items: make(map[string]interface{}, 0),
+		dataMap: cmap.New(),
 	}
 }
 
 // Get returns single item from the backend if the requested item is not
 // found, returns NotFound err
-func (mc *memoryCache) Get(key string) (interface{}, error) {
-	val, ok := mc.items[key]
+func (cmc *memoryCache) Get(key string) (interface{}, error) {
+	val, ok := cmc.dataMap.Get(key)
+
 	if !ok {
-		return nil, errors.New("key not found")
+		return nil, errors.New("key not existed")
 	}
+
 	return val, nil
 }
 
 // Set sets a single item to the backend
-func (mc *memoryCache) Set(key string, val interface{}) error {
-	mc.items[key] = val
+func (cmc *memoryCache) Set(key string, val interface{}) error {
+	cmc.dataMap.Set(key, val)
 	return nil
 }
 
 // Delete deletes single item from backend
-func (mc *memoryCache) Delete(key string) error {
-	delete(mc.items, key)
+func (cmc *memoryCache) Delete(key string) error {
+	cmc.dataMap.Remove(key)
 	return nil
 }
