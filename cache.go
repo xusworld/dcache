@@ -1,16 +1,25 @@
 package dcache
 
-// Cache is the contract for all of the cache backends that are supported by
-// this package
+import "time"
+
+// Cache cache is the interface of in-memory cache
 type Cache interface {
 	// Get returns single item from the backend if the requested item is not
 	// found, returns NotFound err
 	Get(key string) (interface{}, error)
 
-	// Set sets a single item to the backend
-	Set(key string, value interface{}) error
+	// Set set or update a key/value pair in in-memory cache
+	Set(key string, value interface{})
+
+	// SetWithExpire Set set or update a key/value pair in in-memory cache  with an expiration time
+	SetWithExpire(key string, value interface{}, expiration time.Duration)
 
 	// Delete deletes single item from backend
 	Delete(key string) error
-}
 
+	// Len returns the number of items in cache
+	Len() int
+
+	// ForEach
+	ForEach(func(key string, val interface{}))
+}

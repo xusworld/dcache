@@ -1,7 +1,7 @@
 package dcache
 
 import (
-	"errors"
+	"time"
 
 	cmap "github.com/orcaman/concurrent-map"
 )
@@ -18,26 +18,38 @@ func NewMemoryCache() *memoryCache {
 	}
 }
 
-// Get returns single item from the backend if the requested item is not
-// found, returns NotFound err
-func (cmc *memoryCache) Get(key string) (interface{}, error) {
-	val, ok := cmc.dataMap.Get(key)
+// Get
+func (c *memoryCache) Get(key string) (interface{}, error) {
+	val, ok := c.dataMap.Get(key)
 
 	if !ok {
-		return nil, errors.New("key not existed")
+		return nil, errKeyNotFound
 	}
 
 	return val, nil
 }
 
 // Set sets a single item to the backend
-func (cmc *memoryCache) Set(key string, val interface{}) error {
-	cmc.dataMap.Set(key, val)
-	return nil
+func (c *memoryCache) Set(key string, val interface{}) {
+	c.dataMap.Set(key, val)
+}
+
+// SetWithExpire Set set or update a key/value pair in in-memory cache  with an expiration time
+func (c *memoryCache) SetWithExpire(key string, value interface{}, expiration time.Duration) {
 }
 
 // Delete deletes single item from backend
-func (cmc *memoryCache) Delete(key string) error {
-	cmc.dataMap.Remove(key)
+func (c *memoryCache) Delete(key string) error {
+	c.dataMap.Remove(key)
 	return nil
+}
+
+// Len returns the number of items in cache
+func (c *memoryCache) Len() int {
+	return c.dataMap.Count()
+}
+
+// ForEach
+func (c *memoryCache) ForEach(fn func(key string, val interface{})) {
+	c.dataMap.IterCb(fn)
 }
