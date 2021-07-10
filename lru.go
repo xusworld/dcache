@@ -14,7 +14,8 @@ type LruCache struct {
 	lock sync.RWMutex
 }
 
-func NewLRU() LruCache {
+// NewLRUCache
+func NewLRUCache() LruCache {
 	return LruCache{
 		cache: NewMemoryCache(),
 		list:  list.New(),
@@ -38,18 +39,19 @@ func (lru *LruCache) Get(key string) (interface{}, error) {
 
 // Set sets a single item to the backend
 func (lru *LruCache) Set(key string, value interface{}) error {
-	err := lru.cache.Set(key, value)
 
-	if err != nil {
-
-	}
 
 	kv := &KeyValue{
 		key: key,
 		val: value,
 	}
 
-	lru.list.PushFront(kv)
+	element := lru.list.PushFront(kv)
+	err := lru.cache.Set(key, element)
+
+	if err != nil {
+
+	}
 
 	return nil
 }
