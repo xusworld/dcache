@@ -3,8 +3,8 @@ package dcache
 import "time"
 
 
-// cacheItem
-type cacheItem struct {
+// lruItem
+type lruItem struct {
 	// string key
 	key string
 
@@ -13,4 +13,14 @@ type cacheItem struct {
 
 	// expire time
 	expiration time.Duration
+}
+
+
+// lfuItem
+type lfuItem struct {
+	// string key
+	key string
+
+	// item be referenced times count
+	frequency int
 }
