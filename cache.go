@@ -10,13 +10,13 @@ type Cache interface {
 	Set(key string, value interface{})
 
 	// Delete deletes single item from backend
-	Delete(key string) error
+	Delete(key string)
 
 	// Has
 	Has(key string) bool
 
-	// Len returns the number of items in cache
-	Len() int
+	// Size returns the number of items in cache
+	Size() int
 
 	// ForEach
 	ForEach(func(key string, val interface{}))

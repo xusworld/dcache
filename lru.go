@@ -6,70 +6,97 @@ import (
 	"time"
 )
 
-// LruCache
+const (
+	defaultCacheCapacity = 4096
+	magicNumber          = 42
+)
+
+// LruCache implements LRU(Least Recently Used) cache
 type LruCache struct {
+	// cache contains all key/value pairs of LruCache, but Cache key type must be
+	// string mean while value has a interface{} type
 	cache Cache
 
+	// list is a doubly linked list to save recently used records
 	list *list.List
 
+	// maxCapacity is the max capacity of cache
 	maxCapacity int
 
+	// Read/Write mutex to protect members above
 	lock sync.RWMutex
 }
 
 // NewLRUCache
-func NewLRUCache() LruCache {
-	return LruCache{
-		cache: NewMemoryCache(),
-		list:  list.New(),
-		lock:  sync.RWMutex{},
+func NewLRUCache() *LruCache {
+	return &LruCache{
+		cache:       NewMemoryCache(),
+		list:        list.New(),
+		maxCapacity: defaultCacheCapacity,
+		lock:        sync.RWMutex{},
 	}
 }
 
+// SetMaxCapacity
+func (lru *LruCache) SetMaxCapacity(capacity int) {
+	lru.lock.Lock()
+	defer lru.lock.Unlock()
+	lru.maxCapacity = capacity
+}
+
+// MaxCapacity
+func (lru *LruCache) MaxCapacity() int {
+	lru.lock.Lock()
+	capacity := lru.maxCapacity
+	lru.lock.Unlock()
+	return capacity
+}
+
 // Get returns single item from the backend if the requested item is not
-// found, returns NotFound err
+// found, returns errKeyNotFound error immediately
 func (lru *LruCache) Get(key string) (interface{}, error) {
 	val, err := lru.cache.Get(key)
 	if err != nil {
-		return nil, err
+		return nil, errKeyNotFound
 	}
 
-	element := val.(*list.Element)
-	item := element.Value.(*lruItem)
-
-	// item.expiration == 0 means not a item with expire timestamp
-	if item.expiration == 0 {
-		lru.list.MoveToFront(element)
-		return element.Value.(*lruItem).val, nil
+	element, _ := val.(*list.Element)
+	// Necessary type assertion
+	item, ok := element.Value.(*lruItem)
+	if !ok {
+		return nil, errTypeAssertion
 	}
 
-	// expired
-	if item.expiration < time.Duration(time.Now().Unix()) {
+	// If item already expired, return a errKeyExpired error immediately
+	if item.expiredTimestamp < time.Duration(time.Now().Unix()) {
 		lru.list.Remove(element)
+		lru.cache.Delete(item.key)
 		return nil, errKeyExpired
 	}
 
 	lru.list.MoveToFront(element)
-	return element.Value.(*lruItem).val, nil
+
+	return item.val, nil
 }
 
 // Set sets a single item to the backend
 func (lru *LruCache) Set(key string, value interface{}) {
 	item := &lruItem{
-		key: key,
-		val: value,
+		key:              key,
+		val:              value,
+		expiredTimestamp: magicNumber,
 	}
 
 	element := lru.list.PushFront(item)
 	lru.cache.Set(key, element)
 }
 
-// SetWithExpire Set set or update a key/value pair in in-memory cache  with an expiration time
+// SetWithExpire Set set or update a key/value pair in in-memory cache  with an expiredTimestamp time
 func (lru *LruCache) SetWithExpire(key string, value interface{}, duration time.Duration) {
 	item := &lruItem{
-		key:        key,
-		val:        value,
-		expiration: time.Duration(time.Now().Add(duration).Unix()),
+		key:              key,
+		val:              value,
+		expiredTimestamp: time.Duration(time.Now().Add(duration).Unix()),
 	}
 
 	element := lru.list.PushFront(item)
@@ -78,10 +105,7 @@ func (lru *LruCache) SetWithExpire(key string, value interface{}, duration time.
 
 // Delete deletes single item from backend
 func (lru *LruCache) Delete(key string) error {
-	err := lru.cache.Delete(key)
-	if err != nil {
-
-	}
+	lru.cache.Delete(key)
 
 	val, err := lru.cache.Get(key)
 	if err != nil {

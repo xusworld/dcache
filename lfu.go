@@ -6,10 +6,6 @@ import (
 	dmap "github.com/xusworld/dconcurrent-map"
 )
 
-const (
-	defaultLfuCacheCapacity = 4096
-)
-
 type HashSet map[string]bool
 
 // LfuCache
@@ -36,7 +32,7 @@ func NewLfuCache() *LfuCache {
 		cache:        NewMemoryCache(),
 		frequencyMap: dmap.New(),
 		minFrequency: 0,
-		maxCapacity:  defaultLfuCacheCapacity,
+		maxCapacity:  defaultCacheCapacity,
 		lock:         sync.RWMutex{},
 	}
 }
@@ -103,10 +99,10 @@ func (lfu *LfuCache) Set(key string, value interface{}) {
 		_ = lfu.Delete(key)
 	} else {
 		item := &lfuItem{
-			key:        key,
-			val:        value,
-			frequency:  0,
-			expiration: 0,
+			key:              key,
+			val:              value,
+			frequency:        0,
+			expiredTimestamp: 0,
 		}
 		lfu.cache.Set(key, item)
 	}
@@ -122,13 +118,10 @@ func (lfu *LfuCache) Delete(key string) error {
 	}
 
 	// delete key from cache
-	err = lfu.cache.Delete(key)
-	if err != nil {
-		return err
-	}
+	lfu.cache.Delete(key)
 
 	// delete key from frequency map
-	item  := val.(lfuItem)
+	item := val.(lfuItem)
 	frequencySet, _ := lfu.frequencyMap.Get(item.frequency)
 	hashSet := frequencySet.(map[string]bool)
 	delete(hashSet, item.key)
@@ -136,8 +129,8 @@ func (lfu *LfuCache) Delete(key string) error {
 }
 
 // Len returns the number of items in cache
-func (lfu *LfuCache) Len() int {
-	return lfu.cache.Len()
+func (lfu *LfuCache) Size() int {
+	return lfu.cache.Size()
 }
 
 // ForEach

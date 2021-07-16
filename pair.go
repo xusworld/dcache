@@ -10,8 +10,8 @@ type lruItem struct {
 	// interface value
 	val interface{}
 
-	// expire time
-	expiration time.Duration
+	// expired timestamp
+	expiredTimestamp time.Duration
 }
 
 // lfuItem
@@ -25,6 +25,6 @@ type lfuItem struct {
 	// item be referenced times count
 	frequency int
 
-	// expire time
-	expiration time.Duration
+	// expired timestamp
+	expiredTimestamp time.Duration
 }
