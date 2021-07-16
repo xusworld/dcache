@@ -13,7 +13,7 @@ func TestLruCache_Set(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			_ = lruCache.Set("Hello", "World")
+			lruCache.Set("Hello", "World")
 
 			val, _ := lruCache.Get("Hello")
 			t.Log(val)

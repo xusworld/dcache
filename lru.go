@@ -12,6 +12,8 @@ type LruCache struct {
 
 	list *list.List
 
+	maxCapacity int
+
 	lock sync.RWMutex
 }
 
@@ -33,12 +35,12 @@ func (lru *LruCache) Get(key string) (interface{}, error) {
 	}
 
 	element := val.(*list.Element)
-	item := element.Value.(*cacheItem)
+	item := element.Value.(*lruItem)
 
 	// item.expiration == 0 means not a item with expire timestamp
 	if item.expiration == 0 {
 		lru.list.MoveToFront(element)
-		return element.Value.(*cacheItem).val, nil
+		return element.Value.(*lruItem).val, nil
 	}
 
 	// expired
@@ -48,12 +50,12 @@ func (lru *LruCache) Get(key string) (interface{}, error) {
 	}
 
 	lru.list.MoveToFront(element)
-	return element.Value.(*cacheItem).val, nil
+	return element.Value.(*lruItem).val, nil
 }
 
 // Set sets a single item to the backend
 func (lru *LruCache) Set(key string, value interface{}) {
-	item := &cacheItem{
+	item := &lruItem{
 		key: key,
 		val: value,
 	}
@@ -64,7 +66,7 @@ func (lru *LruCache) Set(key string, value interface{}) {
 
 // SetWithExpire Set set or update a key/value pair in in-memory cache  with an expiration time
 func (lru *LruCache) SetWithExpire(key string, value interface{}, duration time.Duration) {
-	item := &cacheItem{
+	item := &lruItem{
 		key:        key,
 		val:        value,
 		expiration: time.Duration(time.Now().Add(duration).Unix()),

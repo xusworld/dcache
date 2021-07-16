@@ -6,6 +6,7 @@ import (
 	cmap "github.com/orcaman/concurrent-map"
 )
 
+
 // memoryCache
 type memoryCache struct {
 	dataMap cmap.ConcurrentMap
@@ -38,6 +39,9 @@ func (c *memoryCache) Set(key string, val interface{}) {
 func (c *memoryCache) SetWithExpire(key string, value interface{}, expiration time.Duration) {
 }
 
+func (c *memoryCache) Has(key string) bool {
+	return c.dataMap.Has(key)
+}
 // Delete deletes single item from backend
 func (c *memoryCache) Delete(key string) error {
 	c.dataMap.Remove(key)
