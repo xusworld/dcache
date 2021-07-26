@@ -86,8 +86,9 @@ func (lru *LruCache) Set(key string, value interface{}) {
 		val:              value,
 		expiredTimestamp: magicNumber,
 	}
-
+	//lru.lock.Lock()
 	element := lru.list.PushFront(item)
+	//lru.lock.Unlock()
 	lru.cache.Set(key, element)
 }
 

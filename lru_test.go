@@ -1,23 +1,51 @@
 package dcache
 
 import (
-	"sync"
+	"container/list"
 	"testing"
 )
 
-func TestLruCache_Set(t *testing.T) {
-	lruCache := NewLRUCache()
+func BenchmarkNewLRUCache(b *testing.B) {
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = NewLRUCache()
+		}
+	})
+}
 
-	var wg sync.WaitGroup
-	for i := 0; i < 10; i++ {
-		wg.Add(1)
+func BenchmarkSetMaxCapacity(b *testing.B) {
+	cache := NewLRUCache()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			cache.SetMaxCapacity(2012)
+		}
+	})
+}
+
+func BenchmarkMaxCapacity(b *testing.B) {
+	cache := NewLRUCache()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			_ = cache.MaxCapacity()
+		}
+	})
+}
+
+func BenchmarkSet(b *testing.B) {
+	cache := NewLRUCache()
+	b.SetParallelism(100)
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			cache.Set("Hello", "Worlda")
+		}
+	})
+}
+
+func TestList(t *testing.T) {
+	l := list.New()
+	for i := 0; i < magicNumber; i++{
 		go func() {
-			defer wg.Done()
-			lruCache.Set("Hello", "World")
-
-			val, _ := lruCache.Get("Hello")
-			t.Log(val)
+			l.PushFront(magicNumber)
 		}()
 	}
-	wg.Wait()
 }
